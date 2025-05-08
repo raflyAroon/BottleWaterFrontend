@@ -8,10 +8,15 @@ import SignLogin from './components/signLogin';
 import Dashboard from './components/dashboard';
 import CustomerProfile from './components/personalisasiProfile';
 import OrgPersonalisasiProfile from './components/orgPersonalisasiProfile';
+import OrderPage from './components/OrderPage';
 import {userService} from './services/apiService';
 
 const CustomerRoute = ({ children }) => {
     return userService.isCustomer() ? children : <Navigate to="/dashboard" />;
+};
+
+const PrivateRoute = ({ children }) => {
+    return userService.isLoggedIn() ? children : <Navigate to="/registration-or-login" />;
 };
 
 function App() {
@@ -64,6 +69,13 @@ function App() {
 
                 {/* Halaman organisasi */}
                 <Route path="/org-profile" element={<OrgPersonalisasiProfile />} />
+
+                {/* Halaman pesanan */}
+                <Route path="/orders" element={
+                    <PrivateRoute>
+                        <OrderPage />
+                    </PrivateRoute>
+                } />
                 
                 {/* Fallback route */}
                 <Route path="*" element={<Navigate to="/dashboard" />} />
