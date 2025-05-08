@@ -414,7 +414,241 @@
     background-color: var(--primary-color);
     color: white;
   }
+
+  .button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .order-button {
+    flex: 1;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .order-now {
+    background-color: #4CAF50;
+    color: white;
+  }
+
+  .order-now:hover {
+    background-color: #45a049;
+  }
+
+  .add-to-cart {
+    background-color: #2196F3;
+    color: white;
+  }
+
+  .add-to-cart:hover {
+    background-color: #1976D2;
+  }
   
+  /* Replenishment Management Styles */
+  .admin-section {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 20px 0;
+    padding: 20px;
+  }
+
+  .low-stock-alerts,
+  .stock-out-history,
+  .notifications {
+    margin-top: 20px;
+  }
+
+  .low-stock-alerts table,
+  .stock-out-history table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+
+  .low-stock-alerts th,
+  .stock-out-history th,
+  .low-stock-alerts td,
+  .stock-out-history td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+
+  .low-stock-alerts th,
+  .stock-out-history th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+  }
+
+  .low-stock-alerts button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .low-stock-alerts button:hover {
+    background-color: #0056b3;
+  }
+
+  /* Notification Styles */
+  .notification-list {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .notification-item {
+    background: #f8f9fa;
+    border-left: 4px solid #007bff;
+    margin-bottom: 10px;
+    padding: 15px;
+    border-radius: 4px;
+  }
+
+  .notification-item h4 {
+    margin: 0 0 8px 0;
+    color: #2c3e50;
+  }
+
+  .notification-item p {
+    margin: 0 0 8px 0;
+    color: #5a6268;
+  }
+
+  .notification-item small {
+    color: #6c757d;
+    display: block;
+  }
+
+  /* Status Indicators */
+  .stock-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .status-low {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+
+  .status-critical {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+
+  .status-normal {
+    background-color: #d4edda;
+    color: #155724;
+  }
+
+  /* Cart Section Styles */
+  .cart-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-top: 20px;
+  }
+
+  .cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+  }
+
+  .quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .quantity-controls button {
+    background-color: #e9ecef;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .quantity-controls button:hover {
+    background-color: #dee2e6;
+  }
+
+  .remove-button {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .remove-button:hover {
+    background-color: #c82333;
+  }
+
+  .cart-total {
+    margin-top: 20px;
+    text-align: right;
+    font-size: 1.2em;
+  }
+
+  /* Delivery Status Styles */
+  .delivery-status {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-top: 20px;
+  }
+
+  .delivery-status h3 {
+    margin: 0 0 15px 0;
+    color: #2c3e50;
+  }
+
+  .delivery-status p {
+    margin: 8px 0;
+    color: #5a6268;
+  }
+
+  /* Admin Section Responsive Styles */
+  @media (max-width: 768px) {
+    .low-stock-alerts table,
+    .stock-out-history table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .notification-list {
+        max-height: 300px;
+    }
+
+    .cart-item {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+
+    .quantity-controls {
+        justify-content: center;
+    }
+  }
+
   /* User Dashboard Styles */
   .user-dashboard {
     margin-top: 2rem;

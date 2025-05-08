@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { userService, productService } from '../services/apiService';
+import { useNavigate, Link } from 'react-router-dom';
+import { userService, productService, replenishmentService, notificationService, cartService } from '../services/apiService';
 import '../style/dashboard.css';
 import axios from 'axios';
 
@@ -12,6 +12,9 @@ const Dashboard = () => {
     const [orgProfiles, setOrgProfiles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [notifications, setNotifications] = useState([]);
+    const [lowStockItems, setLowStockItems] = useState([]);
+    const [stockOutHistory, setStockOutHistory] = useState([]);
     const navigate = useNavigate();
 
     const isLoggedIn = userService.isLoggedIn();
@@ -42,17 +45,45 @@ const Dashboard = () => {
                             headers: { Authorization: `Bearer ${userService.getToken()}` }
                         });
                         setOrgProfiles(orgsResponse.data.data);
+
+                        // Load low stock items and notifications for admin users
+                        try {
+                            const lowStockResponse = await replenishmentService.getLowStockItems();
+                            if (lowStockResponse.status === 'success') {
+                                setLowStockItems(lowStockResponse.data || []);
+                        }
+            } catch (error) {
+                            console.error('Error fetching low stock items:', error);
+                }
+
+                        try {
+                            const stockOutResponse = await replenishmentService.getStockOutHistory(null);
+                            if (stockOutResponse.status === 'success') {
+                                setStockOutHistory(stockOutResponse.data || []);
+            }
+        } catch (error) {
+                            console.error('Error fetching stock out history:', error);
+        }
+
+        try {
+                            const notificationResponse = await notificationService.getUserNotifications();
+                            if (notificationResponse.status === 'success') {
+                                setNotifications(notificationResponse.data || []);
+                            }
+        } catch (error) {
+                            console.error('Error fetching notifications:', error);
+        }
                     }
                 }
             } catch (error) {
                 setError(error.message || 'Failed to load data');
                 if (error.response?.status === 401 && isLoggedIn) {
-                    userService.logout();
+                                        userService.logout();
                 }
             } finally {
                 setLoading(false);
             }
-        };
+};
 
         loadData();
     }, [isLoggedIn]);
@@ -79,6 +110,22 @@ const Dashboard = () => {
         }
     };
 
+    const handleUpdateStockLevel = async (locationId, productId, currentLevel, targetLevel) => {
+        try {
+            await replenishmentService.updateStockLevels(locationId, productId, {
+                currentLevel,
+                targetLevel
+            });
+            // Refresh low stock items
+            const lowStockResponse = await replenishmentService.getLowStockItems();
+            if (lowStockResponse.status === 'success') {
+                setLowStockItems(lowStockResponse.data || []);
+            }
+        } catch (error) {
+            setError(error.message || 'Failed to update stock levels');
+        }
+    };
+
     if (loading) {
         return (
             <div className="loading-container">
@@ -93,7 +140,31 @@ const Dashboard = () => {
     }
 
     const handleOrder = (product) => {
-        console.log('Ordering product:', product);
+        if (userService.isLoggedIn()) {
+            navigate('/orders', { state: { selectedProduct: product } });
+        } else {
+            navigate('/registration-or-login');
+        }
+    };
+
+    const handleAddToCart = async (product) => {
+        try {
+            if (!userService.isLoggedIn()) {
+                navigate('/registration-or-login');
+                return;
+            }
+            
+            // Add the product to cart with quantity 1
+            const response = await cartService.addToCart(product.product_id, 1);
+            
+            if (response.status === 'success') {
+                // Show success message
+                alert(`${product.container_type} added to cart successfully!`);
+            }
+        } catch (error) {
+            console.error('Adding to cart:', error);
+            alert(error.message || 'Failed to add item to cart');
+        }
     };
 
     const getDefaultImage = (productId) => {
@@ -118,12 +189,10 @@ const Dashboard = () => {
                                     <span className="user-role">({user?.role})</span>
                                 </span>
                                 {userService.isCustomer() && (
-                                    <button
-                                        onClick={() => navigate('/profile')}
-                                        className="profile-button"
-                                    >
-                                        Profile
-                                    </button>
+                                    <>
+                                        <Link to="/profile" className="nav-link">Profile</Link>
+                                        <Link to="/orders" className="nav-link">Orders</Link>
+                                    </>
                                 )}
                                 <button
                                     onClick={() => {
@@ -162,7 +231,7 @@ const Dashboard = () => {
                                                 <th>Email</th>
                                                 <th>Role</th>
                                                 <th>Status</th>
-                                                <th>Created At</th>
+                                                <th>Updated At</th>
                                                 <th>Actions</th>
                                             </tr>
                                         </thead>
@@ -182,7 +251,7 @@ const Dashboard = () => {
                                                         </span>
                                                     </td>
                                                     <td>
-                                                        {new Date(user.created_at).toLocaleDateString()}
+                                                        {new Date(user.updated_at).toLocaleDateString()}
                                                     </td>
                                                     <td>
                                                         <div className="action-buttons">
@@ -268,81 +337,178 @@ const Dashboard = () => {
                                     </table>
                                 </div>
                             </div>
+
+                            <div className="admin-section">
+                                <h2>Replenishment Management</h2>
+                                
+                                {/* Low Stock Alerts */}
+                                <div className="low-stock-alerts">
+                                    <h3>Low Stock Alerts</h3>
+                                    {lowStockItems.length === 0 ? (
+                                        <p>No low stock items</p>
+                                    ) : (
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Location</th>
+                                                    <th>Product</th>
+                                                    <th>Current Level</th>
+                                                    <th>Target Level</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {lowStockItems.map(item => (
+                                                    <tr key={`${item.location_id}-${item.product_id}`}>
+                                                        <td>{item.location_name}</td>
+                                                        <td>{item.container_type}</td>
+                                                        <td>{item.current_level}</td>
+                                                        <td>{item.target_level}</td>
+                                                        <td>
+                                                            <button onClick={() => handleUpdateStockLevel(
+                                                                item.location_id,
+                                                                item.product_id,
+                                                                item.current_level,
+                                                                item.target_level
+                                                            )}>
+                                                                Update Stock
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+
+                                {/* Stock Out History */}
+                                <div className="stock-out-history">
+                                    <h3>Recent Stock Outs</h3>
+                                    {stockOutHistory.length === 0 ? (
+                                        <p>No recent stock outs</p>
+                                    ) : (
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Location</th>
+                                                    <th>Product</th>
+                                                    <th>Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {stockOutHistory.map(item => (
+                                                    <tr key={item.stock_out_id}>
+                                                        <td>{item.location_name}</td>
+                                                        <td>{item.container_type}</td>
+                                                        <td>{new Date(item.stock_out_date).toLocaleDateString()}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+
+                                {/* Notifications */}
+                                <div className="notifications">
+                                    <h3>Recent Notifications</h3>
+                                    {notifications.length === 0 ? (
+                                        <p>No notifications</p>
+                                    ) : (
+                                        <div className="notification-list">
+                                            {notifications.map(notification => (
+                                                <div key={notification.notification_id} className="notification-item">
+                                                    <h4>{notification.subject}</h4>
+                                                    <p>{notification.message}</p>
+                                                    <small>{new Date(notification.sent_date).toLocaleString()}</small>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 ) : (
                     <>
-                        <div className="products-container">
-                            <h2 className="section-title">Our Products</h2>
-                            <div className="products-grid">
-                                {products.map((product) => (
-                                    <div key={product.product_id} className="product-card">
-                                        <div className="product-image-container">
-                                            <img 
-                                                src={product.image_url || getDefaultImage(product.product_id)}
-                                                alt={product.name}
-                                                className="product-image"
-                                            />
-                                        </div>
-                                        <div className="product-details">
-                                            <h3 className="product-name">{product.container_type}</h3>
-                                            <p className="product-description">{product.description}</p>
-                                            <p className="product-price">
-                                                Rp {product.unit_price}
-                                                {isLoggedIn && userService.isOrganization() && (
-                                                    <span className="bulk-price"> / Bulk price available</span>
-                                                )}
-                                            </p>
-                                            {isLoggedIn && (userService.isCustomer() || userService.isOrganization()) && (
+                    <div className="products-container">
+                        <h2 className="section-title">Our Products</h2>
+                        <div className="products-grid">
+                            {products.map((product) => (
+                                <div key={product.product_id} className="product-card">
+                                    <div className="product-image-container">
+                                        <img 
+                                            src={product.image_url || getDefaultImage(product.product_id)}
+                                            alt={product.name}
+                                            className="product-image"
+                                        />
+                                    </div>
+                                    <div className="product-details">
+                                        <h3 className="product-name">{product.container_type}</h3>
+                                        <p className="product-description">{product.description}</p>
+                                        <p className="product-price">
+                                            Rp {product.unit_price}
+                                            {isLoggedIn && userService.isOrganization() && (
+                                                <span className="bulk-price"> / Bulk price available</span>
+                                            )}
+                                        </p>
+                                        {isLoggedIn && (userService.isCustomer() || userService.isOrganization()) && (
+                                            <div className="button-group">
                                                 <button 
-                                                    className="order-button"
+                                                    className="order-button order-now"
                                                     onClick={() => handleOrder(product)}
                                                 >
-                                                    {userService.isOrganization() ? 'Bulk Order' : 'Add to Cart'}
+                                                    Order Now
                                                 </button>
-                                            )}
-                                            {!isLoggedIn && (
                                                 <button 
-                                                    className="login-prompt-button"
-                                                    onClick={() => navigate('/registration-or-login')}
+                                                    className="order-button add-to-cart"
+                                                    onClick={() => handleAddToCart(product)}
                                                 >
-                                                    Login to Order
+                                                    {userService.isOrganization() ? 'add to bulk cart' : 'Add to Cart'}
                                                 </button>
-                                            )}
-                                        </div>
+                                            </div>
+                                        )}
+                                        {!isLoggedIn && (
+                                            <button 
+                                                className="login-prompt-button"
+                                                onClick={() => navigate('/registration-or-login')}
+                                            >
+                                                Login to Order
+                                            </button>
+                                        )}
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
                         </div>
-
-                        {isLoggedIn && (
-                            <div className="user-dashboard">
-                                {userService.isOrganization() && (
-                                    <div className="org-panel">
-                                        <h2 className="section-title">Organization Dashboard</h2>
-                                        <div className="org-controls">
-                                            <button onClick={() => navigate('/org-profile')} className="dashboard-button">Organization Profile</button>
-                                            <button className="dashboard-button">View Bulk Orders</button>
-                                            <button className="dashboard-button">Order History</button>
-                                            <button className="dashboard-button">Organization Settings</button>
-                                        </div>
+                    </div>
+                    
+                    {isLoggedIn && (
+                        <div className="user-dashboard">
+                            {userService.isOrganization() && (
+                                <div className="org-panel">
+                                    <h2 className="section-title">Organization Dashboard</h2>
+                                    <div className="org-controls">
+                                        <button onClick={() => navigate('/org-profile')} className="dashboard-button">Organization Profile</button>
+                                        <button className="dashboard-button">View Bulk Orders</button>
+                                        <button className="dashboard-button">Order History</button>
+                                        <button className="dashboard-button">Organization Settings</button>
                                     </div>
-                                )}
-
-                                {userService.isCustomer() && (
-                                    <div className="customer-panel">
-                                        <h2 className="section-title">Customer Dashboard</h2>
-                                        <div className="customer-controls">
-                                            <button className="dashboard-button">My Orders</button>
-                                            <button className="dashboard-button">Shopping Cart</button>
-                                            <button className="dashboard-button">Delivery Status</button>
-                                        </div>
+                                </div>
+                            )}
+                            
+                            {userService.isCustomer() && (
+                                <div className="customer-panel">
+                                    <h2 className="section-title">Customer Dashboard</h2>
+                                    <div className="customer-controls">
+                                        <button onClick={() => navigate('/orders')} className="dashboard-button">My Orders</button>
+                                        <button onClick={() => navigate('/cart')} className="dashboard-button">Shopping Cart</button>
+                                        <button onClick={() => navigate('/profile')} className="dashboard-button">My Profile</button>
                                     </div>
-                                )}
-                            </div>
-                        )}
-                    </>
-                )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </>
+            )}            
             </main>
             
             <footer className="footer">
